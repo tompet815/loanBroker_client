@@ -15,7 +15,7 @@ import java.util.Scanner;
 public class Starter {
        public static void main(String[] argv) throws Exception {
        Customer customer = new Customer();
-       String id= customer.getId();
+       String id= customer.getId1();
        Scanner scan = new Scanner(System.in);
            System.out.println("Please insert your Social Security Number");
        String ssn=scan.next();

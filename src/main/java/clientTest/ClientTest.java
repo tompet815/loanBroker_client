@@ -35,8 +35,8 @@ public class ClientTest {
     public static void main( String[] args ) throws Exception {
         for ( int i = 0; i < 2; i++ ) {
             Customer customer = new Customer();
-            String id = customer.getId();
-            System.out.println( i );
+            String id = customer.getId1();
+            System.out.println( "This is the id: "+ id );
             customer.send(generateRandomNumber( "ssn" ) , Double.parseDouble(generateRandomNumber( "loanAmount" )), 
                                                           Integer.parseInt(generateRandomNumber( "loanDuration" )), id);
             customer.receive();

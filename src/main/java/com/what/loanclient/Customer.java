@@ -30,14 +30,14 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.namespace.QName;
 
-public class Customer {
+public class Customer extends Thread{
 
     private RabbitMQConnector connector;
     private final String GETBANK_EXCHANGE_NAME = "customer_direct_exchange";
     private final String ROUTING_KEY = "customer";
     private final String EXCHANGE_NAME = "whatLoanBroker";
     Channel channel;
-    private final String id;
+    private String id;
 //     send(ssn, loanAmount, loanDuration, id);
 
     public Customer() {
@@ -51,7 +51,7 @@ public class Customer {
         id = UUID.randomUUID().toString();
     }
 
-    public String getId() {
+    public String getId1() {
         return id;
     }
 
@@ -81,47 +81,56 @@ public class Customer {
 
     }
 
-    public void receive() throws IOException {
-        channel = connector.getChannel();
-        channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-        String queueName = channel.queueDeclare().getQueue();
-        channel.queueBind(queueName, EXCHANGE_NAME, "");
-
-        System.out.println(" [*] Waiting for messages.");
-
-        final Consumer consumer = new DefaultConsumer(channel) {
-            @Override
-            public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body) throws IOException {
-                try {
-                    System.out.println(" [x] Received ");
-                           
-                    if (properties.getCorrelationId().equals(id)) {
-                        Map<String,Object> headers=properties.getHeaders();
-                        String bankName=headers.get("bankName").toString();
-                        String bodyString = removeBom(new String(body));
-                        System.out.println("The best offer to you is: ");
-                        LoanResponse res = unmarchal(bodyString);
-                        String ssn=res.getSsn();
-                        if(!ssn.contains("-")){
-                        ssn=ssn.substring(0, 4)+"-"+ssn.substring(4);
+    public void receive(){
+        new Customer().start();
+    }
+    
+    @Override
+    public void run() {
+        try {
+            channel = connector.getChannel();
+            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+            String queueName = channel.queueDeclare().getQueue();
+            channel.queueBind(queueName, EXCHANGE_NAME, "");
+            
+            System.out.println(" [*] Waiting for messages."); 
+            
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body) throws IOException {
+                    try {
+                        System.out.println(" [x] Received ");
+                        System.out.println( "Correlation id: "+ properties.getCorrelationId() + ", id: "+ id);
+                        if (properties.getCorrelationId().equals(id)) {
+                            Map<String,Object> headers=properties.getHeaders();
+                            String bankName=headers.get("bankName").toString();
+                            String bodyString = removeBom(new String(body));
+                            System.out.println("The best offer to you is: ");
+                            LoanResponse res = unmarchal(bodyString);
+                            String ssn=res.getSsn();
+                            if(!ssn.contains("-")){
+                                ssn=ssn.substring(0, 4)+"-"+ssn.substring(4);
+                            }
+                            System.out.println("SSN: "+ssn);
+                            System.out.println("Interest Rate: "+res.getInterestRate());
+                            System.out.println("Bank name: "+bankName);
+                            
                         }
-                        System.out.println("SSN: "+ssn);
-                        System.out.println("Interest Rate: "+res.getInterestRate());
-                        System.out.println("Bank name: "+bankName);
-
+                    }
+                    catch (JAXBException ex) {
+                        Logger.getLogger(Customer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    finally {
+                        System.out.println("Thank you for using our service.");
+                        channel.basicAck(envelope.getDeliveryTag(), false);
+                        System.exit(0);
                     }
                 }
-                catch (JAXBException ex) {
-                    Logger.getLogger(Customer.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                finally {
-                    System.out.println("Thank you for using our service.");
-                    channel.basicAck(envelope.getDeliveryTag(), false);
-                    System.exit(0);
-                }
-            }
-        };
-        channel.basicConsume(queueName, false, consumer);
+            };
+            channel.basicConsume(queueName, false, consumer);
+        } catch ( IOException ex ) {
+            Logger.getLogger( Customer.class.getName() ).log( Level.SEVERE, null, ex );
+        }
 
     }
     //unmarshal from string to Object
