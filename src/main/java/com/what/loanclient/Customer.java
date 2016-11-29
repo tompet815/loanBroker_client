@@ -30,7 +30,7 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.namespace.QName;
 
-public class Customer extends Thread{
+public class Customer extends Thread {
 
     private RabbitMQConnector connector;
     private final String GETBANK_EXCHANGE_NAME = "customer_direct_exchange";
@@ -44,91 +44,87 @@ public class Customer extends Thread{
         connector = new RabbitMQConnector();
         try {
             channel = connector.getChannel();
-        }
-        catch (IOException ex) {
-            Logger.getLogger(Customer.class.getName()).log(Level.SEVERE, null, ex);
+        } catch ( IOException ex ) {
+            Logger.getLogger( Customer.class.getName() ).log( Level.SEVERE, null, ex );
         }
         id = UUID.randomUUID().toString();
-        System.out.println( "The id in constructor is: " + id);
     }
 
     public String getId1() {
         return id;
     }
 
-    public void send(String ssn, double loanAmount, int loanDuration, String id) throws JAXBException, IOException {
+    public void send( String ssn, double loanAmount, int loanDuration, String id ) throws JAXBException, IOException {
 
         BasicProperties.Builder builder = new BasicProperties.Builder();
-        builder.correlationId(id);
-        System.out.println(id);
+        builder.correlationId( id );
+        System.out.println( id );
         BasicProperties prop = builder.build();
-        Data data = new Data(ssn, loanAmount, loanDuration);
-        JAXBContext jc = JAXBContext.newInstance(Data.class);
+        Data data = new Data( ssn, loanAmount, loanDuration );
+        JAXBContext jc = JAXBContext.newInstance( Data.class );
         Marshaller marshaller = jc.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-        JAXBElement<Data> je2 = new JAXBElement(new QName("Data"), Data.class, data);
+        marshaller.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, true );
+        JAXBElement<Data> je2 = new JAXBElement( new QName( "Data" ), Data.class, data );
         StringWriter sw = new StringWriter();
-        marshaller.marshal(je2, sw);
+        marshaller.marshal( je2, sw );
         String xmlString = sw.toString().trim();
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutput objout = new ObjectOutputStream(bos);
-        objout.writeObject(xmlString);
+        ObjectOutput objout = new ObjectOutputStream( bos );
+        objout.writeObject( xmlString );
         byte body[] = bos.toByteArray();
 
-        channel.basicPublish(GETBANK_EXCHANGE_NAME, ROUTING_KEY, prop, body);
-        System.out.println(" [x] Sent '" + xmlString + "'");
+        channel.basicPublish( GETBANK_EXCHANGE_NAME, ROUTING_KEY, prop, body );
+        System.out.println( " [x] Sent '" + xmlString + "'" );
 
-        connector.close(channel);
+        connector.close( channel );
 
     }
 
-    public void receive(){
+    public void receive() {
         start();
     }
-    
+
     @Override
     public void run() {
         try {
             channel = connector.getChannel();
-            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+            channel.exchangeDeclare( EXCHANGE_NAME, "fanout" );
             String queueName = channel.queueDeclare().getQueue();
-            channel.queueBind(queueName, EXCHANGE_NAME, "");
-            
-            System.out.println(" [*] Waiting for messages."); 
-            
-            Consumer consumer = new DefaultConsumer(channel) {
+            channel.queueBind( queueName, EXCHANGE_NAME, "" );
+
+            System.out.println( " [*] Waiting for messages." );
+
+            Consumer consumer = new DefaultConsumer( channel ) {
                 @Override
-                public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body) throws IOException {
+                public void handleDelivery( String consumerTag, Envelope envelope, BasicProperties properties, byte[] body ) throws IOException {
                     try {
-                        System.out.println(" [x] Received ");
-                        System.out.println( "Correlation id: "+ properties.getCorrelationId() + ", id: "+ id);
-                        if (properties.getCorrelationId().equals(id)) {
-                            Map<String,Object> headers=properties.getHeaders();
-                            String bankName=headers.get("bankName").toString();
-                            String bodyString = removeBom(new String(body));
-                            System.out.println("The best offer to you is: ");
-                            LoanResponse res = unmarchal(bodyString);
-                            String ssn=res.getSsn();
-                            if(!ssn.contains("-")){
-                                ssn=ssn.substring(0, 4)+"-"+ssn.substring(4);
+                        System.out.println( " [x] Received " );
+                        System.out.println( "Correlation id: " + properties.getCorrelationId() + ", id: " + id );
+                        if ( properties.getCorrelationId().equals( id ) ) {
+                            Map<String, Object> headers = properties.getHeaders();
+                            String bankName = headers.get( "bankName" ).toString();
+                            String bodyString = removeBom( new String( body ) );
+                            System.out.println( "The best offer to you is: " );
+                            LoanResponse res = unmarchal( bodyString );
+                            String ssn = res.getSsn();
+                            if ( !ssn.contains( "-" ) ) {
+                                ssn = ssn.substring( 0, 4 ) + "-" + ssn.substring( 4 );
                             }
-                            System.out.println("SSN: "+ssn);
-                            System.out.println("Interest Rate: "+res.getInterestRate());
-                            System.out.println("Bank name: "+bankName);
-                            
+                            System.out.println( "SSN: " + ssn );
+                            System.out.println( "Interest Rate: " + res.getInterestRate() );
+                            System.out.println( "Bank name: " + bankName );
+
                         }
-                    }
-                    catch (JAXBException ex) {
-                        Logger.getLogger(Customer.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    finally {
-                        System.out.println("Thank you for using our service.");
-                        channel.basicAck(envelope.getDeliveryTag(), false);
-                        System.exit(0);
+                    } catch ( JAXBException ex ) {
+                        Logger.getLogger( Customer.class.getName() ).log( Level.SEVERE, null, ex );
+                    } finally {
+                        System.out.println( "Thank you for using our service." );
+                        channel.basicAck( envelope.getDeliveryTag(), false );
+                        System.exit( 0 );
                     }
                 }
             };
-            channel.basicConsume(queueName, false, consumer);
+            channel.basicConsume( queueName, false, consumer );
         } catch ( IOException ex ) {
             Logger.getLogger( Customer.class.getName() ).log( Level.SEVERE, null, ex );
         }
@@ -136,33 +132,35 @@ public class Customer extends Thread{
     }
     //unmarshal from string to Object
 
-    private LoanResponse unmarchal(String bodyString) throws JAXBException {
-        JAXBContext jc = JAXBContext.newInstance(LoanResponse.class);
-        Unmarshaller unmarshaller = jc.createUnmarshaller();
-        StringReader reader = new StringReader(bodyString);
-        return (LoanResponse) unmarshaller.unmarshal(reader);
+    private LoanResponse unmarchal( String bodyString ) throws JAXBException {
+            System.out.println( "I am in the unmarshall method" );
+            JAXBContext jc = JAXBContext.newInstance( LoanResponse.class );
+            System.out.println( "I am in the unmarshall method again" );
+            Unmarshaller unmarshaller = jc.createUnmarshaller();
+            StringReader reader = new StringReader( bodyString );
+            return ( LoanResponse ) unmarshaller.unmarshal( reader );
     }
 
     //marshal from pbkect to xml string
-    private String marchal(LoanResponse d) throws JAXBException {
-        JAXBContext jc2 = JAXBContext.newInstance(LoanResponse.class);
+    private String marchal( LoanResponse d ) throws JAXBException {
+        JAXBContext jc2 = JAXBContext.newInstance( LoanResponse.class );
         Marshaller marshaller = jc2.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-        JAXBElement<LoanResponse> je2 = new JAXBElement(new QName("Data"), LoanResponse.class, d);
+        marshaller.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, true );
+        JAXBElement<LoanResponse> je2 = new JAXBElement( new QName( "Data" ), LoanResponse.class, d );
         StringWriter sw = new StringWriter();
-        marshaller.marshal(je2, sw);
+        marshaller.marshal( je2, sw );
 
-        return removeBom(sw.toString());
+        return removeBom( sw.toString() );
     }
 
     //remove unnecessary charactors before xml declaration 
-    private String removeBom(String bodyString) {
+    private String removeBom( String bodyString ) {
         String res = bodyString.trim();
-        int substringIndex = res.indexOf("<?xml");
-        if (substringIndex < 0) {
+        int substringIndex = res.indexOf( "<?xml" );
+        if ( substringIndex < 0 ) {
             return res;
         }
-        return res.substring(res.indexOf("<?xml"));
+        return res.substring( res.indexOf( "<?xml" ) );
     }
 
 }
