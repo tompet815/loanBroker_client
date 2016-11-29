@@ -49,6 +49,7 @@ public class Customer extends Thread{
             Logger.getLogger(Customer.class.getName()).log(Level.SEVERE, null, ex);
         }
         id = UUID.randomUUID().toString();
+        System.out.println( "The id in constructor is: " + id);
     }
 
     public String getId1() {
@@ -82,7 +83,7 @@ public class Customer extends Thread{
     }
 
     public void receive(){
-        new Customer().start();
+        start();
     }
     
     @Override
