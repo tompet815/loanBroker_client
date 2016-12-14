@@ -1,48 +1,48 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package clientTest;
 
-import com.what.loanclient.Customer;
+import static clientTest.ClientTest.generateRandomNumber;
 import java.util.Random;
+import starter.Starter;
 
-/**
- *
- * @author mady
- */
-public class ClientTest {
-    public static String generateRandomNumber( String type ) {
+class ClientTest {
+
+    public static String generateRandomNumber(String type) {
         Random random = new Random();
         long randomNumber = 0, start = 0, end = 0;
-        if ( type.equals( "ssn" ) ) {
+        if (type.equals("ssn")) {
             start = 1000000000L;
             end = 9999999999L;
-        } else if ( type.equals( "loanAmount" ) ) {
+        }
+        else if (type.equals("loanAmount")) {
             start = 100000;
             end = 2000000;
-        } else if ( type.equals( "loanDuration" ) ) {
+        }
+        else if (type.equals("loanDuration")) {
             start = 1;
             end = 30;
         }
         long range = end - start + 1;
-        long fraction = ( long ) (range * random.nextDouble());
+        long fraction = (long) (range * random.nextDouble());
         randomNumber = fraction + start;
         return "" + randomNumber;
     }
 
-    public static void main( String[] args ) throws Exception {
-        for ( int i = 0; i < 2; i++ ) {
-            Customer customer = new Customer();
-            String id = customer.getId1();
-            System.out.println( "This is the id: "+ id );
-            customer.send(generateRandomNumber( "ssn" ) , Double.parseDouble(generateRandomNumber( "loanAmount" )), 
-                                                          Integer.parseInt(generateRandomNumber( "loanDuration" )), id);
-            customer.receive();
-        }
-        System.out.println( "END" );
-
+    public static void main(String[] args) throws Exception {
+      for(int i=0; i<3; i++){
+        new Thread(new TesterRunnable()).start();
+      Thread.sleep(1000);}
     }
+    
+    }
+  class TesterRunnable implements Runnable {
 
-}
+            @Override
+            public void run() {
+                String ssn= generateRandomNumber("ssn").substring(0,6)+"-"+generateRandomNumber("ssn").substring(6);
+                System.out.println(ssn);
+                Starter.send(ssn, Double.parseDouble(generateRandomNumber("loanAmount")),
+                        Integer.parseInt(generateRandomNumber("loanDuration")));
+            }
+
+        }
+      
